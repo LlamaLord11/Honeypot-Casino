@@ -37,24 +37,24 @@ async def on_ready():
 async def cogLoader():
     infastructurePath = os.path.join(os.path.dirname(__file__), "BotInfastructure")
 
-    for folderName in os.listdir(infastructurePath):
+    for moduleName in os.listdir(infastructurePath):
 
-        moduleName = os.path.join(infastructurePath, folderName)
+        innerModuleName = os.path.join(infastructurePath, moduleName)
 
-        for innerFolderName in os.listdir(moduleName):
+        for innerFolderName in os.listdir(innerModuleName):
 
             if not innerFolderName.startswith('_'):
 
-                innerFilePath = os.path.join(moduleName, "Cogs")
+                innerFilePath = os.path.join(innerModuleName, "Cogs")
 
                 for innerFileName in os.listdir(innerFilePath):
 
-                    cogName = f"{moduleName}.cogs.{innerFileName[:-3]}"
+                    cogName = f"BotInfastructure.{moduleName}.{innerFolderName}.{innerFileName[:-3]}"
 
                     try:
 
                         await bot.load_extension(cogName)
-                        print(f"-> Loaded Cog: {cogName}")
+                        print(f"-> Loaded Cog: {innerFileName[:-3]}")
 
                     except Exception as e:
 
