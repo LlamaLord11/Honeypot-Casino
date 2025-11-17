@@ -8,15 +8,13 @@ from dotenv import load_dotenv
 
 sys.dont_write_bytecode = True
 
-# Dev server ID: 1368691043066707968
-
 load_dotenv()
 
 clientToken = os.getenv("BOT_TOKEN")
 
 bot = commands.Bot(command_prefix='/', intents=discord.Intents.all())
 
-devServerID = discord.Object(id=1368691043066707968)
+devServer = discord.Object(id=int(os.getenv("DEV_SERVER_ID")))
 
 @bot.event
 async def on_ready():
@@ -24,10 +22,15 @@ async def on_ready():
     try:
         await cogLoader()
         print(f"Syncing commands")
-        synced = await bot.tree.sync(guild=devServerID)
-        print(f'Synced {len(synced)} commands to guild {devServerID.id}')
+        synced = await bot.tree.sync(guild=devServer)
 
-        syncedCommands = "Synced Commands: "
+        guild = bot.get_guild(devServer.id)
+        if guild is None:
+            guild = await bot.fetch_guild(devServer.id)
+
+        print(f'+ Synced {len(synced)} commands. Guild: {guild.name} | ID: {devServer.id}')
+
+        syncedCommands = "+ Synced Commands: "
         for commands in synced:
             syncedCommands += f"/{commands.name} "
         print(syncedCommands)
