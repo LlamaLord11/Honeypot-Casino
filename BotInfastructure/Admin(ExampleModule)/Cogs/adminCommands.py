@@ -10,17 +10,17 @@ class adminCommands(commands.Cog):
         self.bot = bot
 
     @app_commands.command(name="shutdown", description="Shuts the bot down (Dev Only)")
-    @app_commands.guilds(discord.Object(id=devServerID.id))
+    @app_commands.guilds(discord.Object(id=devServerID))
     @app_commands.default_permissions(administrator=True)
     async def shutDown(self, interaction: discord.Interaction):
         await interaction.response.send_message("Bot shutting down", ephemeral=True)
         await self.bot.close()
 
     @app_commands.command(name="list-commands", description="Lists currently loaded commands (Dev Only)")
-    @app_commands.guilds(discord.Object(id=devServerID.id))
+    @app_commands.guilds(discord.Object(id=devServerID))
     @app_commands.default_permissions(administrator=True)
     async def listCommands(self, interaction: discord.Interaction):
-        cmds = self.bot.tree.get_commands(guild=discord.Object(id=devServerID.id))
+        cmds = self.bot.tree.get_commands(guild=discord.Object(id=devServerID))
         outputText = "=== Loaded Slash Commands ===\n"
 
         for cmd in cmds:
