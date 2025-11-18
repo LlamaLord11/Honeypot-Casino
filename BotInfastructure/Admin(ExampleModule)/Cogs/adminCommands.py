@@ -2,11 +2,8 @@ import os
 import discord
 from discord.ext import commands
 from discord import app_commands
-from dotenv import load_dotenv
 
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__) , "../../../.env"))
-
-devServerID = discord.Object(id=int(os.getenv("DEV_SERVER_ID")))
+devServerID = int(os.getenv("DEV_SERVER_ID"))
 
 class adminCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
