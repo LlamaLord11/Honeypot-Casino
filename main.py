@@ -52,6 +52,9 @@ async def cogLoader():
 
                 for innerFileName in os.listdir(innerFilePath):
 
+                    if not innerFileName.endswith(".py") or innerFileName == "__init__.py":
+                        continue
+
                     cogName = f"BotInfastructure.{moduleName}.{innerFolderName}.{innerFileName[:-3]}"
 
                     try:
