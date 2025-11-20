@@ -5,6 +5,7 @@ from .deck import (
     insert,
     riffleShuffle,
     shuffle,
+    getCardPath,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "insert",
     "riffleShuffle",
     "shuffle",
+    "getCardPath",
 ]

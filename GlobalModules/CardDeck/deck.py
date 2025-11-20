@@ -110,3 +110,15 @@ def shuffle(input):
     return output
 
 # End Deck Shuffling
+
+# Card Path Getter
+
+IMAGE_DIR = os.path.join(BASE_DIR, "CardImages")
+
+def getCardPath(cardName: str):
+    file = f"{cardName}.png"
+    imagePath = os.path.join(IMAGE_DIR, file)
+    if os.path.exists(imagePath):
+        return True, imagePath
+    else:
+        return False, f"No card with name {cardName}"

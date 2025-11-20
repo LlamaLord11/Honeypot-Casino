@@ -1,4 +1,5 @@
 import discord
+from GlobalModules.CardDeck import *
 
 class EmbedTemplates:
     def __init__(self):
@@ -49,3 +50,12 @@ class EmbedTemplates:
         )
 
         return embed
+    
+def getCardImageHelper(cardName: str):
+    fileExists, output = getCardPath(cardName)
+
+    if fileExists:
+        return True, discord.File(output)
+    else:
+        return False, output
+    
