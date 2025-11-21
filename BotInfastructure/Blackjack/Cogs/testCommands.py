@@ -28,5 +28,18 @@ class testCommands(commands.Cog):
         else:
             await interaction.response.send_message(output)
 
+    @app_commands.command(name="card-hand", description="Returns the stitched image of 2 cards")
+    @app_commands.guilds(discord.Object(id=devServerID))
+    @app_commands.describe(pixel_offset="Offset of the overlayed image")
+    @app_commands.describe(file_code1="Name of the first Card (suit) (value: 1-10/King/Queen/Jack)")
+    @app_commands.describe(file_code2="Name of the second Card (suit) (value: 1-10/King/Queen/Jack)")
+    async def getCardImage(self, interaction: discord.Interaction, pixel_offset: int, file_code1: str, file_code2: str):
+        fileExists1, output1 = getCardImageHelper(file_code1)
+        fileExists2, output2 = getCardImageHelper(file_code2)
+        if fileExists1 or fileExists2:
+            await interaction.response.send_message(file=cardImageStitcher(output1, output2, pixel_offset))
+        else:
+            await interaction.response.send_message("Invalid file name input")
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(testCommands(bot))

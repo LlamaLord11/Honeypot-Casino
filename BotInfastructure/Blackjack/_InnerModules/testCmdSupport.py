@@ -1,5 +1,7 @@
 import discord
 from GlobalModules.CardDeck import *
+from PIL import Image
+from io import BytesIO
 
 class EmbedTemplates:
     def __init__(self):
@@ -58,4 +60,15 @@ def getCardImageHelper(cardName: str):
         return True, discord.File(output)
     else:
         return False, output
-    
+
+def cardImageStitcher(in1: discord.File, in2:discord.File, offset):
+    image1 = Image.open(in1.fp)
+    image2 = Image.open(in2.fp)
+
+    image1.paste(image2, (offset, 0))
+
+    buffer = BytesIO()
+    image1.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    return discord.File(buffer, filename="combined.png")
