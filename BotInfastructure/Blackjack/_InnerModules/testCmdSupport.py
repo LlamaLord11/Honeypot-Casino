@@ -1,6 +1,6 @@
 import discord
 from GlobalModules.CardDeck import *
-from PIL import Image
+from PIL import Image, ImageOps
 from io import BytesIO
 
 class EmbedTemplates:
@@ -21,9 +21,9 @@ class EmbedTemplates:
             "This is a display template for demonstration purposes only.\n\n"
             "💵 Minimum Bet: {MIN_BET}\n\n"
             "🃏 Dealer Hand: {DEALER_HAND}\n\n"
-            "🎯 Current Player Turn: {CURRENT_PLAYER}\n"
-            "💥 Latest Player Action: {LATEST_ACTION}\n\n"
-            "========================================="
+            "🎯 Current Player Turn:\n{CURRENT_PLAYER}\n\n"
+            "💥 Latest Player Action:\n{LATEST_ACTION}\n\n"
+            "======================="
         ),
         color=0xFFAE42
         )
@@ -36,7 +36,8 @@ class EmbedTemplates:
             name="Player {PLAYER_NUMBER}: {PLAYER_DISPLAY_NAME} | Standing Bet: {PLAYER_BET}",
             value=(
                 "Current Hand: {PLAYER_HAND}\n"
-                "Result: {PLAYER_RESULT}"
+                "Result: {PLAYER_RESULT}\n"
+                "======================="
             ),
             inline=False
         )
@@ -62,13 +63,38 @@ def getCardImageHelper(cardName: str):
         return False, output
 
 def cardImageStitcher(in1: discord.File, in2:discord.File, offset):
-    image1 = Image.open(in1.fp)
-    image2 = Image.open(in2.fp)
+    image1 = Image.open(in1.fp).convert("RGBA")
+    image2 = Image.open(in2.fp).convert("RGBA")
 
-    image1.paste(image2, (offset, 0))
+    def addBorder(img, thickness):
+        alpha = img.getchannel('A')
+
+        newSize = (img.width + 2*thickness, img.height + 2*thickness)
+        borderedImage = Image.new("RGBA", newSize, (0,0,0,0))
+
+        border = Image.new("L", newSize, 0)
+        for dx in [-thickness, 0, thickness]:
+            for dy in [-thickness, 0, thickness]:
+                border.paste(alpha, (dx+thickness, dy+thickness), mask=alpha)
+
+        black_layer = Image.new("RGBA", newSize, (0,0,0,255))
+        borderedImage = Image.composite(black_layer, borderedImage, mask=border)
+
+        borderedImage.paste(img, (thickness, thickness), mask=alpha)
+        return borderedImage
+    
+    image1Bordered = addBorder(image1, 3)
+    image2Bordered = addBorder(image2, 3)
+
+    newWidth = max(image1Bordered.width, offset + image2Bordered.width)
+    newHeight = max(image1Bordered.height, image2Bordered.height)
+    combined = Image.new("RGBA", (newWidth, newHeight), (0,0,0,0))
+
+    combined.paste(image1Bordered, (0,0), mask=image1Bordered)
+    combined.paste(image2Bordered, (offset, 0), mask=image2Bordered)
 
     buffer = BytesIO()
-    image1.save(buffer, format="PNG")
+    combined.save(buffer, format="PNG")
     buffer.seek(0)
 
     return discord.File(buffer, filename="combined.png")
