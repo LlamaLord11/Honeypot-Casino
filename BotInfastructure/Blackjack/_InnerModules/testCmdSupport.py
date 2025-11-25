@@ -1,6 +1,6 @@
 import discord
 from GlobalModules.CardDeck import *
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageChops, ImageFilter
 from io import BytesIO
 
 class EmbedTemplates:
@@ -62,33 +62,49 @@ def getCardImageHelper(cardName: str):
     else:
         return False, output
 
-def cardImageStitcher(in1: discord.File, in2:discord.File, offset):
+def cardImageStitcher(in1: discord.File, in2: discord.File, offset=60, color1=(0,0,0,255), color2=(0,0,0,255)):
+    """
+    Takes two discord.File images, applies a bordered card style, and pastes the second
+    card exactly `offset` pixels to the right of the first.
+    """
     image1 = Image.open(in1.fp).convert("RGBA")
     image2 = Image.open(in2.fp).convert("RGBA")
 
-    def addBorder(img, thickness):
-        alpha = img.getchannel('A')
+    def addBorder(img: Image.Image, color1=(0, 0, 0, 255), color2=(0, 0, 0, 255), thickness=6) -> Image.Image:
+        img = img.convert("RGBA")
+        new_width = img.width + 2 * thickness
+        new_height = img.height + 2 * thickness
 
-        newSize = (img.width + 2*thickness, img.height + 2*thickness)
-        borderedImage = Image.new("RGBA", newSize, (0,0,0,0))
+        bordered = Image.new("RGBA", (new_width, new_height), (0,0,0,0))
+        bordered.paste(img, (thickness, thickness), mask=img)
 
-        border = Image.new("L", newSize, 0)
-        for dx in [-thickness, 0, thickness]:
-            for dy in [-thickness, 0, thickness]:
-                border.paste(alpha, (dx+thickness, dy+thickness), mask=alpha)
+        alpha = img.getchannel("A")
+        border_mask = Image.new("L", (new_width, new_height), 0)
+        border_mask.paste(alpha, (thickness, thickness))
 
-        black_layer = Image.new("RGBA", newSize, (0,0,0,255))
-        borderedImage = Image.composite(black_layer, borderedImage, mask=border)
+        dilated = border_mask.copy()
+        for _ in range(thickness):
+            dilated = dilated.filter(ImageFilter.MaxFilter(3))
+        border_mask = ImageChops.subtract(dilated, border_mask)
 
-        borderedImage.paste(img, (thickness, thickness), mask=alpha)
-        return borderedImage
-    
-    image1Bordered = addBorder(image1, 3)
-    image2Bordered = addBorder(image2, 3)
+        bordered_pixels = bordered.load()
+        mask_pixels = border_mask.load()
+        for y in range(new_height):
+            for x in range(new_width):
+                if mask_pixels[x, y] != 0:
+                    block_x = x // thickness
+                    block_y = y // thickness
+                    bordered_pixels[x, y] = color1 if (block_x + block_y) % 2 == 0 else color2
 
-    newWidth = max(image1Bordered.width, offset + image2Bordered.width)
-    newHeight = max(image1Bordered.height, image2Bordered.height)
-    combined = Image.new("RGBA", (newWidth, newHeight), (0,0,0,0))
+        return bordered
+
+    image1Bordered = addBorder(image1, color1, color2)
+    image2Bordered = addBorder(image2, color1, color2)
+
+    # New canvas size
+    new_width = max(image1Bordered.width, offset + image2Bordered.width)
+    new_height = max(image1Bordered.height, image2Bordered.height)
+    combined = Image.new("RGBA", (new_width, new_height), (0,0,0,0))
 
     combined.paste(image1Bordered, (0,0), mask=image1Bordered)
     combined.paste(image2Bordered, (offset, 0), mask=image2Bordered)
