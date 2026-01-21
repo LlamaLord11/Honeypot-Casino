@@ -39,80 +39,85 @@ class Card:
 
 # Deck Handling
 
-BASE_DIR = os.path.dirname(__file__)
-DECK_PATH = os.path.join(BASE_DIR, "deck.txt")
+class Deck:
+    def __init__(self):
 
-def freshDeck():
-    file = open(DECK_PATH, "r")
-    lineCount = len(file.readlines())
-    file.seek(0)
-    deck = []
+        self.BASE_DIR = os.path.dirname(__file__)
+        self.DECK_PATH = os.path.join(self.BASE_DIR, "deck.txt")
+        self.deck = self.freshDeck()
 
-    for i in range(0,lineCount):
-        currentLine = file.readline()
-        currentLine = currentLine.split()
+    def freshDeck(self):
+        file = open(self.DECK_PATH, "r")
+        lineCount = len(file.readlines())
+        file.seek(0)
+        deck = []
 
-        suit = int(currentLine[0])
-        if len(currentLine[1]) > 2:
-            face = currentLine[1]
-        else:
-            face = int(currentLine[1])
+        for i in range(0,lineCount):
+            currentLine = file.readline()
+            currentLine = currentLine.split()
 
-        currentCard = Card(suit, face)
-        deck.append(currentCard)
-        
+            suit = int(currentLine[0])
+            if len(currentLine[1]) > 2:
+                face = currentLine[1]
+            else:
+                face = int(currentLine[1])
 
-    file.close()
-    return deck
+            currentCard = Card(suit, face)
+            deck.append(currentCard)
+            
 
-def draw(deck):
-    topCard = deck.pop(0)
-    return topCard
+        file.close()
+        return deck
 
-def insert(deck, card):
-    deck.append(card)
+    def draw(self):
+        topCard = self.deck.pop(0)
+        return topCard
+
+    def insert(self, card):
+        self.deck.append(card)
 
 # End Deck Handling
 
 # Deck Shuffling
 
-def riffleShuffle(input):
-    
-    midpoint = int(len(input)/2 + random.randint(-1,1))
-    shuffledDeck = []
-    
-    left = input[:midpoint]
-    right = input[midpoint:]
+    def riffleShuffle(self):
+        
+        midpoint = int(len(self.deck)/2 + random.randint(-1,1))
+        shuffledDeck = []
+        
+        left = self.deck[:midpoint]
+        right = self.deck[midpoint:]
 
-    for i in range(0,len(input)):
-        if len(left) == 0:
-            shuffledDeck.extend(right)
-            return shuffledDeck
-        elif len(right) == 0:
-            shuffledDeck.extend(left)
-            return shuffledDeck
-        else:
-            oddEven = random.randint(1,2)
+        for i in range(0,len(self.deck)):
+            if len(left) == 0:
+                shuffledDeck.extend(right)
+                return shuffledDeck
+            elif len(right) == 0:
+                shuffledDeck.extend(left)
+                return shuffledDeck
+            else:
+                oddEven = random.randint(1,2)
 
-            match oddEven:
-                case 1:
-                    shuffledDeck.append(left[-1])
-                    left.pop(-1)
-                case 2:
-                    shuffledDeck.append(right[-1])
-                    right.pop(-1)
+                match oddEven:
+                    case 1:
+                        shuffledDeck.append(left[-1])
+                        left.pop(-1)
+                    case 2:
+                        shuffledDeck.append(right[-1])
+                        right.pop(-1)
 
-def shuffle(input):
-    output = input
-    for i in range(1,random.randint(4,12)):
-        output = riffleShuffle(output)
+    def shuffle(self, input):
+        output = input
+        for i in range(1,random.randint(4,12)):
+            output = self.riffleShuffle(output)
 
-    return output
+        return output
 
 # End Deck Shuffling
 
-# Card Path Getter
+# Card Path Collector
 
+BASE_DIR = os.path.dirname(__file__)
 IMAGE_DIR = os.path.join(BASE_DIR, "CardImages")
 
 def getCardPath(cardName: str):
