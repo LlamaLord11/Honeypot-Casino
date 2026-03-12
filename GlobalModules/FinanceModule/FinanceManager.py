@@ -12,13 +12,12 @@ Database schema:
         reserved_promo REAL NOT NULL DEFAULT 0.0
     )
 
-The HOUSE_ID constant is the discord ID of the admin/house account.
+The house_id passed to FinanceManager is the discord ID of the admin/house account.
 All forfeited (lost) funds are transferred there for accounting purposes.
 """
 
 from __future__ import annotations
 
-import os
 import asyncio
 import aiosqlite
 from dataclasses import dataclass
@@ -29,6 +28,7 @@ from typing import Any, Callable, Coroutine, Protocol
 class DiscordClient(Protocol):
     """Structural interface for the discord.Client we need — avoids importing discord."""
     async def fetch_user(self, user_id: int) -> Any: ...
+
 
 # ---------------------------------------------------------------------------
 # Result types
@@ -52,6 +52,7 @@ class FinanceResult:
     promo: float | None = None
     reserved_real: float | None = None
     reserved_promo: float | None = None
+    data: Any | None = None
 
     @property
     def ok(self) -> bool:
@@ -92,13 +93,13 @@ class FinanceManager:
     eliminating race conditions without needing explicit locks.
 
     Usage:
-        fm = FinanceManager()
+        fm = FinanceManager(db_path="...", house_id=...)
         await fm.start()
         ...
         await fm.stop()
 
     Or use it as an async context manager:
-        async with FinanceManager() as fm:
+        async with FinanceManager(db_path="...", house_id=...) as fm:
             ...
     """
 
@@ -372,13 +373,6 @@ class FinanceManager:
             if err:
                 return err
 
-            # Determine how much promo and real were actually in this reservation.
-            # We assume reservations were added proportionally; for a single-bet
-            # bot this is straightforward — the most recently reserved split.
-            # Because we track totals, we need the caller to pass the split or we
-            # derive it. For simplicity and correctness we reconstruct from stored
-            # totals assuming this reservation consumed reserved_promo first.
-            # For multi-game support, callers should use reserve_split_resolve below.
             promo_in_reserve = min(row["reserved_promo"], reserved_amount)
             real_in_reserve = reserved_amount - promo_in_reserve
 
@@ -480,9 +474,6 @@ class FinanceManager:
         Called on bot startup to return all outstanding reserved funds to their owners.
         Returns a list of (discord_id, returned_real, returned_promo) for each affected user
         so the bot can notify them.
-
-        This should be called before start() hands off to the worker, or immediately after,
-        before any user commands are processed.
         """
         async def _op() -> FinanceResult:
             async with self._db.execute(
@@ -507,26 +498,14 @@ class FinanceManager:
                 recovered.append((row["discord_id"], ret_real, ret_promo))
 
             await self._db.commit()
-            # Piggyback the list out via a custom result — the worker still needs
-            # a FinanceResult return type, so we stash the list in message as a signal.
             return FinanceResult(
                 status=Status.OK,
-                message="__recovery__",
-                # Abuse balance field temporarily to count rows; caller reads from _recovery_data
-                balance=float(len(recovered)),
-            ), recovered
+                message="Recovery complete.",
+                data=recovered,
+            )
 
-        # Recovery is special — bypass the normal enqueue so we can return raw data.
-        future: asyncio.Future = asyncio.get_event_loop().create_future()
-
-        async def _wrapped():
-            result, data = await _op()
-            future._recovery_data = data
-            return result
-
-        await self._queue.put((_wrapped, future))
-        await future
-        return getattr(future, "_recovery_data", [])
+        result = await self._enqueue(_op)
+        return result.data or []
 
     async def update_all_usernames(self, client: DiscordClient) -> dict[int, str]:
         """
@@ -566,23 +545,14 @@ class FinanceManager:
             if updated:
                 await self._db.commit()
 
-            # Stash updated dict for retrieval after the future resolves
             return FinanceResult(
                 status=Status.OK,
-                message="__username_update__",
-                balance=float(len(updated)),
-            ), updated
+                message="Username update complete.",
+                data=updated,
+            )
 
-        future: asyncio.Future = asyncio.get_event_loop().create_future()
-
-        async def _wrapped():
-            result, data = await _op()
-            future._update_data = data
-            return result
-
-        await self._queue.put((_wrapped, future))
-        await future
-        return getattr(future, "_update_data", {})
+        result = await self._enqueue(_op)
+        return result.data or {}
 
     async def admin_set_balance(
         self,
