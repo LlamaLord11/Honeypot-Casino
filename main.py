@@ -32,7 +32,7 @@ class CasinoBot(commands.Bot):
                 user = await self.fetch_user(discord_id)
                 await user.send(
                     f"Honeypot Casino restarted while you had an active bet.\n"
-                    f"Returned to your account: **${ret_real:.2f}** normal balance, **${ret_promo:.2f}** promo balance."
+                    f"Returned to your account: **${formatBalance(ret_real)}** normal balance, **${formatBalance(ret_promo)}** promo balance."
                 )
             except Exception as e:
                 print(f"Could not notify user {discord_id} of recovery: {e}")

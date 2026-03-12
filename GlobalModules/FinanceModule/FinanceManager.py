@@ -6,14 +6,20 @@ Database schema:
     accounts(
         discord_id   INTEGER PRIMARY KEY,
         username     TEXT NOT NULL DEFAULT 'Unknown',
-        balance      REAL NOT NULL DEFAULT 0.0,
-        promo        REAL NOT NULL DEFAULT 0.0,
-        reserved_real  REAL NOT NULL DEFAULT 0.0,
-        reserved_promo REAL NOT NULL DEFAULT 0.0
+        balance      INTEGER NOT NULL DEFAULT 0,
+        promo        INTEGER NOT NULL DEFAULT 0,
+        reserved_real  INTEGER NOT NULL DEFAULT 0,
+        reserved_promo INTEGER NOT NULL DEFAULT 0
     )
 
 The house_id passed to FinanceManager is the discord ID of the admin/house account.
 All forfeited (lost) funds are transferred there for accounting purposes.
+
+Balance format:
+    All balance values are stored and handled as raw integers representing cents.
+    e.g. $10.50 is stored as 1050.
+    Use formatBalance(amount) to convert to a display string for the user.
+    Input from users should be multiplied by 100 before being passed to any method.
 """
 
 from __future__ import annotations
@@ -48,10 +54,10 @@ class FinanceResult:
     status: Status
     message: str
     username: str | None = None
-    balance: float | None = None
-    promo: float | None = None
-    reserved_real: float | None = None
-    reserved_promo: float | None = None
+    balance: int | None = None
+    promo: int | None = None
+    reserved_real: int | None = None
+    reserved_promo: int | None = None
     data: Any | None = None
 
     @property
@@ -124,10 +130,10 @@ class FinanceManager:
             CREATE TABLE IF NOT EXISTS accounts (
                 discord_id     INTEGER PRIMARY KEY,
                 username       TEXT    NOT NULL DEFAULT 'Unknown',
-                balance        REAL    NOT NULL DEFAULT 0.0,
-                promo          REAL    NOT NULL DEFAULT 0.0,
-                reserved_real  REAL    NOT NULL DEFAULT 0.0,
-                reserved_promo REAL    NOT NULL DEFAULT 0.0
+                balance        INTEGER NOT NULL DEFAULT 0,
+                promo          INTEGER NOT NULL DEFAULT 0,
+                reserved_real  INTEGER NOT NULL DEFAULT 0,
+                reserved_promo INTEGER NOT NULL DEFAULT 0
             )
         """)
         # Migration: add username column if this is an existing database that predates it
@@ -209,8 +215,8 @@ class FinanceManager:
         self,
         discord_id: int,
         username: str,
-        starting_balance: float = 0.0,
-        starting_promo: float = 0.0,
+        starting_balance: int = 0,
+        starting_promo: int = 0,
     ) -> FinanceResult:
         """
         Explicitly create an account for a Discord user.
@@ -253,7 +259,7 @@ class FinanceManager:
 
         return await self._enqueue(_op)
 
-    async def deposit(self, discord_id: int, amount: float) -> FinanceResult:
+    async def deposit(self, discord_id: int, amount: int) -> FinanceResult:
         """Add funds to a user's main balance."""
         if amount <= 0:
             return FinanceResult(status=Status.ERROR, message="Deposit amount must be positive.")
@@ -273,7 +279,7 @@ class FinanceManager:
 
         return await self._enqueue(_op)
 
-    async def deposit_promo(self, discord_id: int, amount: float) -> FinanceResult:
+    async def deposit_promo(self, discord_id: int, amount: int) -> FinanceResult:
         """Add funds to a user's promotional balance."""
         if amount <= 0:
             return FinanceResult(status=Status.ERROR, message="Deposit amount must be positive.")
@@ -293,7 +299,7 @@ class FinanceManager:
 
         return await self._enqueue(_op)
 
-    async def reserve(self, discord_id: int, amount: float) -> FinanceResult:
+    async def reserve(self, discord_id: int, amount: int) -> FinanceResult:
         """
         Reserve `amount` for an active bet.
         Draws from promo balance first, then real balance.
@@ -314,9 +320,9 @@ class FinanceManager:
                 return FinanceResult(
                     status=Status.INSUFFICIENT,
                     message=(
-                        f"Insufficient funds. Available: {total_available:.2f} "
-                        f"(balance={row['balance']:.2f}, promo={row['promo']:.2f}), "
-                        f"required: {amount:.2f}."
+                        f"Insufficient funds. Available: {total_available} "
+                        f"(balance={row['balance']}, promo={row['promo']}), "
+                        f"required: {amount}."
                     ),
                     balance=row["balance"],
                     promo=row["promo"],
@@ -348,8 +354,8 @@ class FinanceManager:
     async def resolve_win(
         self,
         discord_id: int,
-        reserved_amount: float,
-        payout: float,
+        reserved_amount: int,
+        payout: int,
     ) -> FinanceResult:
         """
         Resolve a won bet.
@@ -381,9 +387,9 @@ class FinanceManager:
                     status=Status.NOT_RESERVED,
                     message=(
                         f"Reserved funds mismatch. "
-                        f"Stored reserved_real={row['reserved_real']:.2f}, "
-                        f"reserved_promo={row['reserved_promo']:.2f}, "
-                        f"expected real={real_in_reserve:.2f}, promo={promo_in_reserve:.2f}."
+                        f"Stored reserved_real={row['reserved_real']}, "
+                        f"reserved_promo={row['reserved_promo']}, "
+                        f"expected real={real_in_reserve}, promo={promo_in_reserve}."
                     ),
                 )
 
@@ -410,7 +416,7 @@ class FinanceManager:
     async def resolve_loss(
         self,
         discord_id: int,
-        reserved_amount: float,
+        reserved_amount: int,
     ) -> FinanceResult:
         """
         Resolve a lost bet.
@@ -432,8 +438,8 @@ class FinanceManager:
                     status=Status.NOT_RESERVED,
                     message=(
                         f"Reserved funds mismatch. "
-                        f"Stored reserved_real={row['reserved_real']:.2f}, "
-                        f"reserved_promo={row['reserved_promo']:.2f}."
+                        f"Stored reserved_real={row['reserved_real']}, "
+                        f"reserved_promo={row['reserved_promo']}."
                     ),
                 )
 
@@ -455,7 +461,7 @@ class FinanceManager:
                     "INSERT OR IGNORE INTO accounts (discord_id) VALUES (?)",
                     (self._house_id,),
                 )
-                house_balance = 0.0
+                house_balance = 0
             else:
                 house_balance = house_row["balance"]
 
@@ -469,7 +475,7 @@ class FinanceManager:
 
         return await self._enqueue(_op)
 
-    async def recover_reservations(self) -> list[tuple[int, float, float]]:
+    async def recover_reservations(self) -> list[tuple[int, int, int]]:
         """
         Called on bot startup to return all outstanding reserved funds to their owners.
         Returns a list of (discord_id, returned_real, returned_promo) for each affected user
@@ -557,8 +563,8 @@ class FinanceManager:
     async def admin_set_balance(
         self,
         discord_id: int,
-        balance: float | None = None,
-        promo: float | None = None,
+        balance: int | None = None,
+        promo: int | None = None,
     ) -> FinanceResult:
         """
         Directly set a user's balance and/or promo balance.
@@ -579,3 +585,12 @@ class FinanceManager:
             return _snapshot(row)
 
         return await self._enqueue(_op)
+
+
+# ---------------------------------------------------------------------------
+# Formatting
+# ---------------------------------------------------------------------------
+
+def formatBalance(amount: int) -> str:
+    """Convert a raw integer balance (cents) to a decimal string. e.g. 1050 → '10.50'"""
+    return f"{amount / 100:.2f}"
