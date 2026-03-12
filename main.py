@@ -1,69 +1,91 @@
 import sys, os
 
-
 import discord
 from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
+from GlobalModules.FinanceModule import *
 
 sys.dont_write_bytecode = True
-
 load_dotenv()
 
-clientToken = os.getenv("BOT_TOKEN")
+CLIENT_TOKEN = os.getenv("BOT_TOKEN")
+DEV_SERVER_ID = discord.Object(id=int(os.getenv("DEV_SERVER_ID")))
+HOUSE_ID = int(os.getenv("HOUSE_ID"))  # Add this to your .env
 
-bot = commands.Bot(command_prefix='/', intents=discord.Intents.all())
 
-devServer = discord.Object(id=int(os.getenv("DEV_SERVER_ID")))
+class CasinoBot(commands.Bot):
+    def __init__(self):
+        super().__init__(command_prefix="/", intents=discord.Intents.all())
+        self.fm: FinanceManager = None
 
-@bot.event
-async def on_ready():
-    print(f'We have logged in as {bot.user}')
-    try:
-        await cogLoader()
-        print(f"Syncing commands")
-        synced = await bot.tree.sync(guild=devServer)
+    async def setup_hook(self):
+        # Start finance manager
+        self.fm = FinanceManager(db_path="casino.db", house_id=HOUSE_ID)
+        await self.fm.start()
 
-        guild = bot.get_guild(devServer.id)
-        if guild is None:
-            guild = await bot.fetch_guild(devServer.id)
+        # Recover any reservations left over from a crash
+        recovered = await self.fm.recover_reservations()
+        for discord_id, ret_real, ret_promo in recovered:
+            try:
+                user = await self.fetch_user(discord_id)
+                await user.send(
+                    f"The bot restarted while you had an active bet. "
+                    f"Returned to your account: **${ret_real:.2f}** balance, **${ret_promo:.2f}** promo."
+                )
+            except Exception as e:
+                print(f"Could not notify user {discord_id} of recovery: {e}")
 
-        print(f'+ Synced {len(synced)} commands. Guild: {guild.name} | ID: {devServer.id}')
+        # Load cogs
+        await self.cog_loader()
 
-        syncedCommands = "+ Synced Commands: "
-        for commands in synced:
-            syncedCommands += f"/{commands.name} "
-        print(syncedCommands)
-    except Exception as e:
-        print(f'Sync error: {e}')
+        # Sync commands to dev server
+        print("Syncing commands...")
+        try:
+            synced = await self.tree.sync(guild=DEV_SERVER_ID)
+            guild = self.get_guild(DEV_SERVER_ID.id) or await self.fetch_guild(DEV_SERVER_ID.id)
+            print(f"Synced {len(synced)} commands to {guild.name} ({DEV_SERVER_ID.id})")
+            print("Synced: " + " ".join(f"/{cmd.name}" for cmd in synced))
+        except Exception as e:
+            print(f"Sync error: {e}")
 
-async def cogLoader():
-    infastructurePath = os.path.join(os.path.dirname(__file__), "BotInfastructure")
+    async def close(self):
+        if self.fm:
+            await self.fm.stop()
+        await super().close()
 
-    for moduleName in os.listdir(infastructurePath):
+    async def on_ready(self):
+        print(f"Logged in as {self.user}")
 
-        innerModuleName = os.path.join(infastructurePath, moduleName)
+    async def cogLoader():
+        infastructurePath = os.path.join(os.path.dirname(__file__), "BotInfastructure")
 
-        for innerFolderName in os.listdir(innerModuleName):
+        for moduleName in os.listdir(infastructurePath):
 
-            if not innerFolderName.startswith('_'):
+            innerModuleName = os.path.join(infastructurePath, moduleName)
 
-                innerFilePath = os.path.join(innerModuleName, "Cogs")
+            for innerFolderName in os.listdir(innerModuleName):
 
-                for innerFileName in os.listdir(innerFilePath):
+                if not innerFolderName.startswith('_'):
 
-                    if not innerFileName.endswith(".py") or innerFileName == "__init__.py":
+                    innerFilePath = os.path.join(innerModuleName, "Cogs")
+
+                    if not os.path.isdir(innerFilePath):
                         continue
 
-                    cogName = f"BotInfastructure.{moduleName}.{innerFolderName}.{innerFileName[:-3]}"
+                    for innerFileName in os.listdir(innerFilePath):
 
-                    try:
+                        if not innerFileName.endswith(".py") or innerFileName == "__init__.py":
+                            continue
 
-                        await bot.load_extension(cogName)
-                        print(f"-> Loaded Cog: {innerFileName[:-3]}")
+                        cogName = f"BotInfastructure.{moduleName}.{innerFolderName}.{innerFileName[:-3]}"
 
-                    except Exception as e:
+                        try:
+                            await bot.load_extension(cogName)
+                            print(f"-> Loaded Cog: {innerFileName[:-3]}")
+                        except Exception as e:
+                            print(f"-> Failed to load Cog {cogName}\n{e}")
 
-                        print(f"-> Failed to load Cog {cogName}\n{e}")
 
-bot.run(clientToken)
+bot = CasinoBot()
+bot.run(CLIENT_TOKEN)
