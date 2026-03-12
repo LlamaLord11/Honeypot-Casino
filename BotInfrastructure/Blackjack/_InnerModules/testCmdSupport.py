@@ -5,7 +5,6 @@ from io import BytesIO
 
 class EmbedTemplates:
     def __init__(self):
-        print("placeholder")
 
         self.tableMin = 0
         self.dealerHandField = "{Card Value} of {Suit} | Total: {Optimal Hand Value}"
