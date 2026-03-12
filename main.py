@@ -21,7 +21,8 @@ class CasinoBot(commands.Bot):
 
     async def setup_hook(self):
         # Start finance manager
-        self.fm = FinanceManager(db_path="casino.db", house_id=HOUSE_ID)
+        databasePath = os.path.join(os.path.dirname(__file__), "Database", "casino.db")
+        self.fm = FinanceManager(db_path=databasePath, house_id=HOUSE_ID)
         await self.fm.start()
 
         # Recover any reservations left over from a crash
@@ -30,14 +31,14 @@ class CasinoBot(commands.Bot):
             try:
                 user = await self.fetch_user(discord_id)
                 await user.send(
-                    f"The bot restarted while you had an active bet. "
-                    f"Returned to your account: **${ret_real:.2f}** balance, **${ret_promo:.2f}** promo."
+                    f"Honeypot Casino restarted while you had an active bet."
+                    f"Returned to your account: **${ret_real:.2f}** normal balance, **${ret_promo:.2f}** promo balance."
                 )
             except Exception as e:
                 print(f"Could not notify user {discord_id} of recovery: {e}")
 
         # Load cogs
-        await self.cog_loader()
+        await self.cogLoader()
 
         # Sync commands to dev server
         print("Syncing commands...")
@@ -57,7 +58,7 @@ class CasinoBot(commands.Bot):
     async def on_ready(self):
         print(f"Logged in as {self.user}")
 
-    async def cogLoader():
+    async def cogLoader(self):
         infastructurePath = os.path.join(os.path.dirname(__file__), "BotInfastructure")
 
         for moduleName in os.listdir(infastructurePath):
@@ -81,7 +82,7 @@ class CasinoBot(commands.Bot):
                         cogName = f"BotInfastructure.{moduleName}.{innerFolderName}.{innerFileName[:-3]}"
 
                         try:
-                            await bot.load_extension(cogName)
+                            await self.load_extension(cogName)
                             print(f"-> Loaded Cog: {innerFileName[:-3]}")
                         except Exception as e:
                             print(f"-> Failed to load Cog {cogName}\n{e}")

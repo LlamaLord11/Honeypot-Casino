@@ -18,6 +18,7 @@ All forfeited (lost) funds are transferred there for accounting purposes.
 
 from __future__ import annotations
 
+import os
 import asyncio
 import aiosqlite
 from dataclasses import dataclass
@@ -35,7 +36,7 @@ class DiscordClient(Protocol):
 # ---------------------------------------------------------------------------
 
 HOUSE_ID: int = 0  # Replace with your actual house/admin Discord user ID
-DB_PATH: str = "casino.db"
+DB_PATH: str = os.path.join(os.path.dirname(__file__), "Database", "casino.db")
 
 
 # ---------------------------------------------------------------------------
