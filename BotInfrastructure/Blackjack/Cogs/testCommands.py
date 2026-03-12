@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-from BotInfastructure.Blackjack._InnerModules import *
+from BotInfrastructure.Blackjack._InnerModules import *
 from GlobalModules.CardDeck import *
 
 class testCommands(commands.Cog):

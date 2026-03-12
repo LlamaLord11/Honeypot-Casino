@@ -31,7 +31,7 @@ class CasinoBot(commands.Bot):
             try:
                 user = await self.fetch_user(discord_id)
                 await user.send(
-                    f"Honeypot Casino restarted while you had an active bet."
+                    f"Honeypot Casino restarted while you had an active bet.\n"
                     f"Returned to your account: **${ret_real:.2f}** normal balance, **${ret_promo:.2f}** promo balance."
                 )
             except Exception as e:
@@ -59,11 +59,11 @@ class CasinoBot(commands.Bot):
         print(f"Logged in as {self.user}")
 
     async def cogLoader(self):
-        infastructurePath = os.path.join(os.path.dirname(__file__), "BotInfastructure")
+        infrastructurePath = os.path.join(os.path.dirname(__file__), "BotInfrastructure")
 
-        for moduleName in os.listdir(infastructurePath):
+        for moduleName in os.listdir(infrastructurePath):
 
-            innerModuleName = os.path.join(infastructurePath, moduleName)
+            innerModuleName = os.path.join(infrastructurePath, moduleName)
 
             for innerFolderName in os.listdir(innerModuleName):
 
@@ -79,7 +79,7 @@ class CasinoBot(commands.Bot):
                         if not innerFileName.endswith(".py") or innerFileName == "__init__.py":
                             continue
 
-                        cogName = f"BotInfastructure.{moduleName}.{innerFolderName}.{innerFileName[:-3]}"
+                        cogName = f"BotInfrastructure.{moduleName}.{innerFolderName}.{innerFileName[:-3]}"
 
                         try:
                             await self.load_extension(cogName)
