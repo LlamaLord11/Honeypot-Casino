@@ -36,7 +36,6 @@ class DiscordClient(Protocol):
 # ---------------------------------------------------------------------------
 
 HOUSE_ID: int = 0  # Replace with your actual house/admin Discord user ID
-DB_PATH: str = os.path.join(os.path.dirname(__file__), "Database", "casino.db")
 
 
 # ---------------------------------------------------------------------------
@@ -111,7 +110,7 @@ class FinanceManager:
             ...
     """
 
-    def __init__(self, db_path: str = DB_PATH, house_id: int = HOUSE_ID) -> None:
+    def __init__(self, db_path: str, house_id: int = HOUSE_ID) -> None:
         self._db_path = db_path
         self._house_id = house_id
         self._queue: asyncio.Queue[tuple[Callable, asyncio.Future]] = asyncio.Queue()
