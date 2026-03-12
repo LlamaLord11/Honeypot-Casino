@@ -1,19 +1,11 @@
 from .deck import (
     Card,
-    freshDeck,
-    draw,
-    insert,
-    riffleShuffle,
-    shuffle,
+    Deck,
     getCardPath,
 )
 
 __all__ = [
     "Card",
-    "freshDeck",
-    "draw",
-    "insert",
-    "riffleShuffle",
-    "shuffle",
+    "Deck",
     "getCardPath",
 ]
