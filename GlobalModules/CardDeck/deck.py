@@ -1,5 +1,10 @@
 import os, random
 
+# Constants
+
+SHUFFLE_OFFSET = 0.05 # Percentage of deck length to offset shuffle midpoint.
+BURST_SIZE = 3 # Max number of cards to shuffle at once during riffle shuffle. It will be 1 to BURST_SIZE cards.
+
 class Card:
 # 1 = hearts, 2 = diamonds, 3 = spades, 4 = clubs
     def __init__(self, suitValue, faceValue):
@@ -40,17 +45,18 @@ class Card:
 # Deck Handling
 
 class Deck:
-    def __init__(self):
+    def __init__(self, deckCount = 1):
 
         self.BASE_DIR = os.path.dirname(__file__)
         self.DECK_PATH = os.path.join(self.BASE_DIR, "deck.txt")
+        self.deckCount = deckCount
         self.deck = self.freshDeck()
 
     def freshDeck(self):
         file = open(self.DECK_PATH, "r")
         lineCount = len(file.readlines())
         file.seek(0)
-        deck = []
+        singleDeck = []
 
         for i in range(0,lineCount):
             currentLine = file.readline()
@@ -63,11 +69,11 @@ class Deck:
                 face = int(currentLine[1])
 
             currentCard = Card(suit, face)
-            deck.append(currentCard)
+            singleDeck.append(currentCard)
             
 
         file.close()
-        return deck
+        return singleDeck * self.deckCount
 
     def draw(self):
         topCard = self.deck.pop(0)
@@ -81,37 +87,33 @@ class Deck:
 # Deck Shuffling
 
     def riffleShuffle(self):
-        
-        midpoint = int(len(self.deck)/2 + random.randint(-1,1))
+        offset = int(len(self.deck) * SHUFFLE_OFFSET)
+        midpoint = int(len(self.deck)/2 + random.randint(-offset, offset))
         shuffledDeck = []
-        
         left = self.deck[:midpoint]
         right = self.deck[midpoint:]
 
-        for i in range(0,len(self.deck)):
-            if len(left) == 0:
+        while left or right:
+            if not left:
                 shuffledDeck.extend(right)
-                return shuffledDeck
-            elif len(right) == 0:
+                break
+            elif not right:
                 shuffledDeck.extend(left)
-                return shuffledDeck
+                break
             else:
-                oddEven = random.randint(1,2)
+                burst = random.randint(1, BURST_SIZE)
+                if random.randint(1, 2) == 1:
+                    shuffledDeck.extend(left[:burst])
+                    left = left[burst:]
+                else:
+                    shuffledDeck.extend(right[:burst])
+                    right = right[burst:]
 
-                match oddEven:
-                    case 1:
-                        shuffledDeck.append(left[-1])
-                        left.pop(-1)
-                    case 2:
-                        shuffledDeck.append(right[-1])
-                        right.pop(-1)
+        self.deck = shuffledDeck
 
-    def shuffle(self, input):
-        output = input
-        for i in range(1,random.randint(4,12)):
-            output = self.riffleShuffle(output)
-
-        return output
+    def shuffle(self):
+        for i in range(random.randint(4,12)):
+            self.riffleShuffle()
 
 # End Deck Shuffling
 
