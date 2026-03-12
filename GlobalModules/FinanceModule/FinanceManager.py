@@ -30,14 +30,6 @@ class DiscordClient(Protocol):
     """Structural interface for the discord.Client we need — avoids importing discord."""
     async def fetch_user(self, user_id: int) -> Any: ...
 
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-HOUSE_ID: int = 0  # Replace with your actual house/admin Discord user ID
-
-
 # ---------------------------------------------------------------------------
 # Result types
 # ---------------------------------------------------------------------------
@@ -110,7 +102,7 @@ class FinanceManager:
             ...
     """
 
-    def __init__(self, db_path: str, house_id: int = HOUSE_ID) -> None:
+    def __init__(self, db_path: str, house_id: int) -> None:
         self._db_path = db_path
         self._house_id = house_id
         self._queue: asyncio.Queue[tuple[Callable, asyncio.Future]] = asyncio.Queue()
